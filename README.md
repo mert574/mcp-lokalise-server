@@ -5,13 +5,12 @@ A Model Context Protocol (MCP) server for managing Lokalise translations.
 ## Features
 
 - ✅ Create translation keys with multiple language translations
-- ✅ Delete translation keys 
 - ✅ Get specific translation key details by name
+- ✅ Delete translation keys 
 
 ## Installation
 
 ```bash
-cd mcp-lokalise-server
 npm install
 ```
 
@@ -33,15 +32,7 @@ Create a new translation key with translations:
 }
 ```
 
-### 2. delete_lokalise_key
-
-Delete a translation key by ID:
-
-```json
-{ "key_id": "123456789" }
-```
-
-### 3. get_lokalise_key
+### 2. get_lokalise_key
 
 Get details for a specific translation key by name:
 
@@ -49,7 +40,17 @@ Get details for a specific translation key by name:
 { "key_name": "my_key" }
 ```
 
+### 3. delete_lokalise_key
+
+Delete a translation key by ID:
+
+```json
+{ "key_id": "123456789" }
+```
+
 ## Configuration
+
+Create your API token here: https://app.lokalise.com/profile#apitokens
 
 The server uses environment variables for configuration:
 
@@ -58,14 +59,6 @@ The server uses environment variables for configuration:
 - `LOKALISE_PROJECT_ID` - Your Lokalise project ID
 - `LOKALISE_API_TOKEN` - Your Lokalise API token
 - `LOKALISE_PLATFORMS` - Comma-separated platforms (default: `web`)
-
-Create your API token here: https://app.lokalise.com/profile#apitokens
-
-## Running the Server
-
-```bash
-LOKALISE_PROJECT_ID=x LOKALISE_API_TOKEN=y npm start
-```
 
 ## MCP Client Configuration
 
@@ -76,7 +69,12 @@ Add to your MCP client configuration:
   "mcpServers": {
     "lokalise": {
       "command": "node",
-      "args": ["/path/to/mcp-lokalise-server/index.js"]
+      "args": ["/path/to/mcp-lokalise-server/index.js"],
+      "env": {
+        "LOKALISE_PROJECT_ID": "your-project-id",
+        "LOKALISE_API_TOKEN": "your-api-token",
+        "LOKALISE_PLATFORMS": "web"
+      }
     }
   }
 }
