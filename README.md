@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server for managing Lokalise translations.
 
 - ✅ Create translation keys with multiple language translations
 - ✅ Delete translation keys 
-- ✅ Get specific translation key details by ID
+- ✅ Get specific translation key details by name
 
 ## Installation
 
@@ -43,10 +43,10 @@ Delete a translation key by ID:
 
 ### 3. get_lokalise_key
 
-Get details for a specific translation key:
+Get details for a specific translation key by name:
 
 ```json
-{ "key_id": "123456789" }
+{ "key_name": "my_key" }
 ```
 
 ## Configuration

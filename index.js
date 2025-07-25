@@ -73,16 +73,16 @@ class LokaliseServer {
           },
           {
             name: 'get_lokalise_key',
-            description: 'Get a specific translation key from Lokalise by ID',
+            description: 'Get a specific translation key from Lokalise by name',
             inputSchema: {
               type: 'object',
               properties: {
-                key_id: {
+                key_name: {
                   type: 'string',
-                  description: 'The ID of the key to retrieve',
+                  description: 'The name of the key to retrieve',
                 },
               },
-              required: ['key_id'],
+              required: ['key_name'],
             },
           },
         ],
@@ -99,7 +99,7 @@ class LokaliseServer {
           case 'delete_lokalise_key':
             return await this.deleteLokaliseKey(args);
           case 'get_lokalise_key':
-            return await this.getLokaliseKey(args);
+            return await this.getLokaliseKey({ key_name: args.key_name });
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -209,8 +209,27 @@ class LokaliseServer {
     const config = this.getConfig();
     const projectId = config.project_id;
     const apiToken = config.api_token;
+    const keyName = args.key_name;
 
-    const response = await fetch(`https://api.lokalise.com/api2/projects/${projectId}/keys/${args.key_id}`, {
+    const listUrl = `https://api.lokalise.com/api2/projects/${projectId}/keys?filter_keys=${encodeURIComponent(keyName)}`;
+    const listResp = await fetch(listUrl, {
+      method: 'GET',
+      headers: {
+        'X-Api-Token': apiToken,
+      },
+    });
+    const listData = await listResp.json();
+    if (!listResp.ok) {
+      throw new Error(`Lokalise API error: ${listData.error?.message || 'Unknown error'}`);
+    }
+    if (!listData.keys || listData.keys.length === 0) {
+      throw new Error(`No key found with name: ${keyName}`);
+    }
+    // Use the first matching key
+    const keyId = listData.keys[0].key_id;
+
+    // Fetch the key details by key_id
+    const response = await fetch(`https://api.lokalise.com/api2/projects/${projectId}/keys/${keyId}`, {
       method: 'GET',
       headers: {
         'X-Api-Token': apiToken,
