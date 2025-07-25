@@ -8,6 +8,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { loadConfig } from './config.js';
 
+const LOKALISE_API_BASE_URL = 'https://api.lokalise.com/api2/projects';
+
 class LokaliseServer {
   constructor() {
     this.server = new Server(
@@ -122,11 +124,38 @@ class LokaliseServer {
     return loadConfig();
   }
 
-  async createLokaliseKey(args) {
+  async lokaliseApiCall(endpoint, method = 'GET', body = null) {
     const config = this.getConfig();
     const projectId = config.project_id;
     const apiToken = config.api_token;
-    const platforms = config.platforms;
+
+    const url = `${LOKALISE_API_BASE_URL}/${projectId}${endpoint}`;
+    const headers = {
+      'X-Api-Token': apiToken,
+    };
+
+    const options = {
+      method,
+      headers,
+    };
+
+    if (body) {
+      headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(url, options);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`Lokalise API error: ${data.error?.message || 'Unknown error'}`);
+    }
+
+    return data;
+  }
+
+  async createLokaliseKey(args) {
+    const platforms = this.getConfig().platforms;
 
     // Convert translations object to API format
     const translations = Object.entries(args.translations).map(([language_iso, translation]) => ({
@@ -144,20 +173,7 @@ class LokaliseServer {
       ],
     };
 
-    const response = await fetch(`https://api.lokalise.com/api2/projects/${projectId}/keys`, {
-      method: 'POST',
-      headers: {
-        'X-Api-Token': apiToken,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(`Lokalise API error: ${data.error?.message || 'Unknown error'}`);
-    }
+    const data = await this.lokaliseApiCall('/keys', 'POST', payload);
 
     const createdKey = data.keys[0];
     return {
@@ -179,21 +195,7 @@ class LokaliseServer {
   }
 
   async deleteLokaliseKey(args) {
-    const config = this.getConfig();
-    const projectId = config.project_id;
-    const apiToken = config.api_token;
-
-    const response = await fetch(`https://api.lokalise.com/api2/projects/${projectId}/keys/${args.key_id}`, {
-      method: 'DELETE',
-      headers: {
-        'X-Api-Token': apiToken,
-      },
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(`Lokalise API error: ${data.error?.message || 'Unknown error'}`);
-    }
+    await this.lokaliseApiCall(`/keys/${args.key_id}`, 'DELETE');
 
     return {
       content: [
@@ -206,22 +208,10 @@ class LokaliseServer {
   }
 
   async getLokaliseKey(args) {
-    const config = this.getConfig();
-    const projectId = config.project_id;
-    const apiToken = config.api_token;
     const keyName = args.key_name;
 
-    const listUrl = `https://api.lokalise.com/api2/projects/${projectId}/keys?filter_keys=${encodeURIComponent(keyName)}`;
-    const listResp = await fetch(listUrl, {
-      method: 'GET',
-      headers: {
-        'X-Api-Token': apiToken,
-      },
-    });
-    const listData = await listResp.json();
-    if (!listResp.ok) {
-      throw new Error(`Lokalise API error: ${listData.error?.message || 'Unknown error'}`);
-    }
+    const listData = await this.lokaliseApiCall(`/keys?filter_keys=${encodeURIComponent(keyName)}`);
+
     if (!listData.keys || listData.keys.length === 0) {
       throw new Error(`No key found with name: ${keyName}`);
     }
@@ -229,22 +219,10 @@ class LokaliseServer {
     const keyId = listData.keys[0].key_id;
 
     // Fetch the key details by key_id
-    const response = await fetch(`https://api.lokalise.com/api2/projects/${projectId}/keys/${keyId}`, {
-      method: 'GET',
-      headers: {
-        'X-Api-Token': apiToken,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(`Lokalise API error: ${data.error?.message || 'Unknown error'}`);
-    }
+    const data = await this.lokaliseApiCall(`/keys/${keyId}`);
 
     const key = data.key;
     const translations = key.translations
-      .filter(t => t.translation) // Only show non-empty translations
       .map(t => `  ${t.language_iso}: "${t.translation}"`)
       .join('\n');
 
